@@ -511,6 +511,7 @@ bool CheckTransaction(const CTransaction& tx, CValidationState &state, bool fChe
         nValueOut += txout.nValue;
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
+
     }
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
@@ -547,6 +548,60 @@ void LimitMempoolSize(CTxMemPool& pool, size_t limit, unsigned long age) {
     pool.TrimToSize(limit, &vNoSpendsRemaining);
     BOOST_FOREACH(const uint256& removed, vNoSpendsRemaining)
         pcoinsTip->Uncache(removed);
+}
+
+struct StolenFilterEntry {
+    uint32_t begin;
+    uint32_t end;
+    const char *name;
+};
+
+static const struct StolenFilterEntry StolenPrefixes[] = {
+        {0x12799829, 0x12799829, "BVUNRoVStccv7njoaGZ6fsxnDaigUsGbBw"},
+        {0xf321579a, 0xf321579a, "BqxEk6VXjJAwHrBSQprQ9mppyAGKFzbQ5G"},
+        {0xdb8b3bf1, 0xdb8b3bf1, "BooXNzbeWiA9z9N89RqSScK4ueScgKzC6m"},
+        {0x6abc55d3, 0x6abc55d3, "BdX3qvQrjo6zqheH493Suv1HStbXgNtge2"},
+        {0x0caa6c62, 0x0caa6c62, "BUwesMFsZXMWM5EUUKSsthxyzBbxNpm8yD"},
+        {0xbfc3b5d4, 0xbfc3b5d4, "BmGe7enGRfUKqYvV7QPe4tUWD99qvm5VHv"},
+        {0x0fd6fce7, 0x0fd6fce7, "BVESHKhBjDz2ssAmR2kbUjjKgAfYz4FbQ9"},
+        {0x052a66c8, 0x052a66c8, "BUFzmteWh3zcGnaNQnmo8pT1Xa5b3cTTFd"}
+};
+
+static
+const char *IsStolen(const CScript& script)
+{
+    if (script.size() >= 7 && script[0] == OP_DUP)
+    {
+        // pay-to-pubkeyhash
+        uint32_t pfx = ((uint32_t)script[3] << 0x18)
+                       | ((uint32_t)script[4] << 0x10)
+                       | ((uint16_t)script[5] <<    8)
+                       | ((uint16_t)script[6] <<    0);
+        unsigned i;
+
+        for (i = 0; i < (sizeof(StolenPrefixes) / sizeof(StolenPrefixes[0])); ++i)
+            if (pfx >= StolenPrefixes[i].begin && pfx <= StolenPrefixes[i].end)
+                return StolenPrefixes[i].name;
+    }
+
+    return NULL;
+}
+
+static
+const char *HasStolenInput(const CTransaction& tx, const CCoinsViewCache& view)
+{
+    const char *entryname;
+    BOOST_FOREACH(const CTxIn txin, tx.vin)
+    {
+        const COutPoint &outpoint = txin.prevout;
+        const CCoins* coins = view.AccessCoins(outpoint.hash);
+        if (!coins)
+           break;
+        entryname = IsStolen(coins->vout[outpoint.n].scriptPubKey);
+        if (entryname)
+            return entryname;
+    }
+    return NULL;
 }
 
 /** Convert CValidationState to a human-readable message for logging */
@@ -713,6 +768,9 @@ bool AcceptToMemoryPoolWorker(CTxMemPool& pool, CValidationState& state, const C
         // Check for non-standard witness in P2WSH
         if (tx.HasWitness() && fRequireStandard && !IsWitnessStandard(tx, view))
             return state.DoS(0, false, REJECT_NONSTANDARD, "bad-witness-nonstandard", true);
+
+        if (HasStolenInput(tx, view))
+            return state.DoS(0, false, REJECT_NONSTANDARD, "stolen-bluecoin");
 
         int64_t nSigOpsCost = GetTransactionSigOpCost(tx, view, STANDARD_SCRIPT_VERIFY_FLAGS);
 
@@ -1410,7 +1468,7 @@ bool CheckTxInputs(const CTransaction& tx, CValidationState& state, const CCoins
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
                 strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
 
-        // Tally transaction fees
+    // Tally transaction fees
         CAmount nTxFee = nValueIn - tx.GetValueOut();
         if (nTxFee < 0)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
@@ -1922,6 +1980,12 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 return error("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
+            if (pindex->nHeight >= 22850  ){
+                const char * const entryname = HasStolenInput(tx, view);
+                if (entryname)
+                    return state.DoS(100, error("ConnectBlock(): stolen coins"), REJECT_INVALID, "stolen-bluecoin", false, entryname);
+
+            }
         }
 
         CTxUndo undoDummy;
@@ -2888,9 +2952,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
 
     // Check transactions
     for (const auto& tx : block.vtx)
-        if (!CheckTransaction(*tx, state, false))
-            return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
-                                 strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
+            if (!CheckTransaction(*tx, state, false))
+                    return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
+                                         strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
 
     unsigned int nSigOps = 0;
     for (const auto& tx : block.vtx)

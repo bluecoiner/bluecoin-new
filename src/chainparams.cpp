@@ -97,10 +97,10 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1517356801; // January 31st, 2018
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000000000a300a30");
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000005176879401806");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x90b573cd1070b29c71b6bb8b2b994b56694801966db09edf2f7146e5428117c9");
+        consensus.defaultAssumeValid = uint256S("0x5421e6a694622dd7044d5e8d8f7e284594acf8fd3e145999c9c34b1df07dddfc");
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -135,7 +135,7 @@ public:
 
         checkpointData = (CCheckpointData) {
             boost::assign::map_list_of
-            (  140, uint256S("0x90b573cd1070b29c71b6bb8b2b994b56694801966db09edf2f7146e5428117c9"))
+            (  22300, uint256S("0x5421e6a694622dd7044d5e8d8f7e284594acf8fd3e145999c9c34b1df07dddfc"))
         };
 
         chainTxData = ChainTxData{

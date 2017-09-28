@@ -563,8 +563,7 @@ static const struct StolenFilterEntry StolenPrefixes[] = {
         {0x6abc55d3, 0x6abc55d3, "BdX3qvQrjo6zqheH493Suv1HStbXgNtge2"},
         {0x0caa6c62, 0x0caa6c62, "BUwesMFsZXMWM5EUUKSsthxyzBbxNpm8yD"},
         {0xbfc3b5d4, 0xbfc3b5d4, "BmGe7enGRfUKqYvV7QPe4tUWD99qvm5VHv"},
-        {0x0fd6fce7, 0x0fd6fce7, "BVESHKhBjDz2ssAmR2kbUjjKgAfYz4FbQ9"},
-        {0x052a66c8, 0x052a66c8, "BUFzmteWh3zcGnaNQnmo8pT1Xa5b3cTTFd"}
+        {0x0fd6fce7, 0x0fd6fce7, "BVESHKhBjDz2ssAmR2kbUjjKgAfYz4FbQ9"}
 };
 
 static

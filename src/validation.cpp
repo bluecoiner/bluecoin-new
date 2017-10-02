@@ -1979,7 +1979,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 return error("ConnectBlock(): CheckInputs on %s failed with %s",
                     tx.GetHash().ToString(), FormatStateMessage(state));
             control.Add(vChecks);
-            if (pindex->nHeight >= 25000  ){
+            if (pindex->nHeight >= 33000){
                 const char * const entryname = HasStolenInput(tx, view);
                 if (entryname)
                     return state.DoS(100, error("ConnectBlock(): stolen coins"), REJECT_INVALID, "stolen-bluecoin", false, entryname);
